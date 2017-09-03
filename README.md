@@ -8,4 +8,4 @@ This Python script does web scrapping on a website made by the UCM, an universit
 		python main.py
 
 
-The text on the script is in spanish, as the website is in spanish. 
+The text on the script is in spanish, as the website is in spanish.

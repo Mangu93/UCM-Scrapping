@@ -3,6 +3,7 @@
 import errno
 import os
 import pprint
+import shutil
 from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
@@ -13,6 +14,9 @@ BASE_URL = 'http://ocw.uc3m.es/cursos'
 EXTENDED = BASE_URL + '?b_start:int=20'
 ACTUAL_SECTION = ''
 BASE_CWD = os.getcwd()
+SEARCH_FOR_WORDS = (
+    "Material de clase", 'Ejercicio', 'Prácticas', 'Pruebas de evaluación ', 'Exercises', 'Lecture Notes', 'Labs',
+    'Evaluation Tests')
 
 
 def main_processing():
@@ -35,31 +39,36 @@ def main_processing():
             user_input = None
         if user_input == "":
             for i, entry in enumerate(base_categories):
-                process_choice(entry)
+                process_choice(entry, all_values=True)
         else:
             entry = base_categories[int(user_input)]
             process_choice(entry)
 
 
-def process_choice(entry):
+# noinspection PyPep8
+def process_choice(entry, all_values=False):
     filtered_entries = [filtered_entry for filtered_entry in entry.find_all('a', href=True) if
                         not 'img src' in filtered_entry.__str__()][
                        1:]
     courses_to_print = [str(index) + ": " + course['href'].split('/')[-1].upper() for index, course in
                         enumerate(filtered_entries)]
-    print("CURSOS")
-    pprint.pprint(courses_to_print)
-    print("INTRODUCE UN NUMERO PARA DESCARGAR EL CURSO. PULSA ENTER SIN INTRODUCIR NADA PARA DESCARGAR TODOS")
-    try:
-        user_input = getnumber()
-    except:
-        user_input = None
-    if user_input == "":
+    if all_values:
         for link in filtered_entries:
             process_course(link['href'])
     else:
-        entry = filtered_entries[int(user_input)]
-        process_course(entry['href'])
+        print("CURSOS")
+        pprint.pprint(courses_to_print)
+        print("INTRODUCE UN NUMERO PARA DESCARGAR EL CURSO. PULSA ENTER SIN INTRODUCIR NADA PARA DESCARGAR TODOS")
+        try:
+            user_input = getnumber()
+        except:
+            user_input = None
+        if user_input == "":
+            for link in filtered_entries:
+                process_course(link['href'])
+        else:
+            entry = filtered_entries[int(user_input)]
+            process_course(entry['href'])
 
 
 def process_course(link):
@@ -72,7 +81,8 @@ def process_course(link):
 
             for entry_link in enumerate(course_links):
                 entry_name = entry_link[1].getText()
-                if "Material de clase" in entry_name or 'Ejercicio' in entry_name or 'Prácticas' in entry_name:
+                global SEARCH_FOR_WORDS
+                if any(word in entry_name for word in SEARCH_FOR_WORDS):
                     process_section(entry_link[1].find('a')['href'])
             print("Course downloaded")
     except requests.exceptions.ConnectionError:
@@ -101,7 +111,7 @@ def download_pdf(pdf_link):
         path = Path(os.path.join(os.getcwd(), 'courses', ACTUAL_SECTION))
         os.chdir(path.__str__())
         name_file = os.path.basename(os.getcwd()) + str(
-            len([name for name in os.listdir('.') if os.path.isfile(name)])) + ".pdf"
+            len([name for name in os.listdir('.') if os.path.isfile(name)])) + ".pdf"[-30:]
         with open(name_file, 'wb') as fpdf:
             fpdf.write(pdf_request.content)
         os.chdir(BASE_CWD)
@@ -126,6 +136,7 @@ def getnumber():
         number = input("Numero: ")
         if number.isdigit() or number == "":
             return number
+
 
 if __name__ == "__main__":
     main_processing()
